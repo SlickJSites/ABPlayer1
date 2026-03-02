@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Before / After Music Player</title>
+<title>Before / After Undisputed</title>
 
 <script src="https://unpkg.com/wavesurfer.js@7"></script>
 
@@ -127,7 +127,7 @@ function createWave(container) {
     container: container,
     waveColor: '#5F5F5F',
     progressColor: '#F0F0F0',
-    backend: 'WebAudio',
+    backend: 'MediaElement',
     height: 140,
   });
 }
@@ -135,8 +135,8 @@ function createWave(container) {
 const before = createWave('#waveBefore');
 const after = createWave('#waveAfter');
 
-before.load('before.wav');
-after.load('after.wav');
+before.load('SampleBefore.wav');
+after.load('SampleAfter.wav');
 
 let playing = false;
 
@@ -158,6 +158,18 @@ function switchTrack(track) {
   }
 }
 
+// LOCK SEEKING (No Drift)
+function lockSync(source, target) {
+  source.on('seeking', () => {
+    const time = source.getCurrentTime();
+    target.setTime(time);
+  });
+}
+
+lockSync(before, after);
+lockSync(after, before);
+
+// Play / Pause
 playBtn.onclick = async () => {
   await audioContext.resume();
 
@@ -182,7 +194,9 @@ document.addEventListener('keydown', e => {
   }
 });
 
-function createMeter(wavesurfer, lufsEl, peakEl, barEl) {
+// INTEGRATED LUFS (Gated Accumulation)
+function createIntegratedMeter(wavesurfer, lufsEl, peakEl, barEl) {
+
   wavesurfer.on('ready', () => {
 
     const media = wavesurfer.getMediaElement();
@@ -195,7 +209,11 @@ function createMeter(wavesurfer, lufsEl, peakEl, barEl) {
 
     const buffer = new Float32Array(analyser.fftSize);
 
+    let integratedEnergy = 0;
+    let integratedSamples = 0;
+
     function update() {
+
       analyser.getFloatTimeDomainData(buffer);
 
       let sum = 0;
@@ -204,27 +222,34 @@ function createMeter(wavesurfer, lufsEl, peakEl, barEl) {
       for (let i = 0; i < buffer.length; i++) {
         let sample = buffer[i];
         sum += sample * sample;
-
-        // Oversampled-style interpolation
-        if (i > 0) {
-          let interp = (buffer[i - 1] + sample) / 2;
-          peak = Math.max(peak, Math.abs(sample), Math.abs(interp));
-        } else {
-          peak = Math.max(peak, Math.abs(sample));
-        }
+        peak = Math.max(peak, Math.abs(sample));
       }
 
       let rms = Math.sqrt(sum / buffer.length);
-      let lufs = 20 * Math.log10(rms);
-      if (!isFinite(lufs) || lufs < -60) lufs = -60;
+      let momentary = 20 * Math.log10(rms);
+
+      // Gating threshold (~ -70 LUFS floor)
+      if (momentary > -70) {
+        integratedEnergy += sum;
+        integratedSamples += buffer.length;
+      }
+
+      let integratedLufs = -60;
+
+      if (integratedSamples > 0) {
+        let meanSquare = integratedEnergy / integratedSamples;
+        integratedLufs = 20 * Math.log10(Math.sqrt(meanSquare));
+      }
+
+      if (!isFinite(integratedLufs)) integratedLufs = -60;
 
       let dbtp = 20 * Math.log10(peak);
-      if (!isFinite(dbtp) || dbtp < -60) dbtp = -60;
+      if (!isFinite(dbtp)) dbtp = -60;
 
-      lufsEl.textContent = "LUFS: " + lufs.toFixed(1);
+      lufsEl.textContent = "Integrated LUFS: " + integratedLufs.toFixed(1);
       peakEl.textContent = "True Peak: " + dbtp.toFixed(1) + " dBTP";
 
-      let percent = Math.min((peak) * 100, 100);
+      let percent = Math.min(peak * 100, 100);
       barEl.style.width = percent + "%";
 
       requestAnimationFrame(update);
@@ -234,14 +259,14 @@ function createMeter(wavesurfer, lufsEl, peakEl, barEl) {
   });
 }
 
-createMeter(
+createIntegratedMeter(
   before,
   document.getElementById('lufsBefore'),
   document.getElementById('peakBefore'),
   document.getElementById('barBefore')
 );
 
-createMeter(
+createIntegratedMeter(
   after,
   document.getElementById('lufsAfter'),
   document.getElementById('peakAfter'),

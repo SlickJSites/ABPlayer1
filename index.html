@@ -211,6 +211,7 @@ function createIntegratedMeter(wavesurfer, lufsEl, peakEl, barEl) {
 
     let integratedEnergy = 0;
     let integratedSamples = 0;
+    let maxTruePeak = -Infinity;
 
     function update() {
 
@@ -222,13 +223,20 @@ function createIntegratedMeter(wavesurfer, lufsEl, peakEl, barEl) {
       for (let i = 0; i < buffer.length; i++) {
         let sample = buffer[i];
         sum += sample * sample;
-        peak = Math.max(peak, Math.abs(sample));
+
+        // Simple inter-sample approximation
+        if (i > 0) {
+          let interp = (buffer[i - 1] + sample) / 2;
+          peak = Math.max(peak, Math.abs(sample), Math.abs(interp));
+        } else {
+          peak = Math.max(peak, Math.abs(sample));
+        }
       }
 
+      // ===== INTEGRATED LUFS =====
       let rms = Math.sqrt(sum / buffer.length);
       let momentary = 20 * Math.log10(rms);
 
-      // Gating threshold (~ -70 LUFS floor)
       if (momentary > -70) {
         integratedEnergy += sum;
         integratedSamples += buffer.length;
@@ -243,17 +251,33 @@ function createIntegratedMeter(wavesurfer, lufsEl, peakEl, barEl) {
 
       if (!isFinite(integratedLufs)) integratedLufs = -60;
 
-      let dbtp = 20 * Math.log10(peak);
-      if (!isFinite(dbtp)) dbtp = -60;
-
       lufsEl.textContent = "Integrated LUFS: " + integratedLufs.toFixed(1);
-      peakEl.textContent = "True Peak: " + dbtp.toFixed(1) + " dBTP";
 
-      let percent = Math.min(peak * 100, 100);
+      // ===== OVERALL TRUE PEAK =====
+      let currentDbtp = 20 * Math.log10(peak);
+      if (!isFinite(currentDbtp)) currentDbtp = -60;
+
+      if (currentDbtp > maxTruePeak) {
+        maxTruePeak = currentDbtp;
+      }
+
+      peakEl.textContent = "Max True Peak: " + maxTruePeak.toFixed(1) + " dBTP";
+
+      // Peak bar reflects MAX peak
+      let percent = Math.min(Math.pow(10, maxTruePeak / 20) * 100, 100);
       barEl.style.width = percent + "%";
 
       requestAnimationFrame(update);
     }
+
+    // Reset when restarting from beginning
+    wavesurfer.on('seek', (progress) => {
+      if (progress === 0) {
+        maxTruePeak = -Infinity;
+        integratedEnergy = 0;
+        integratedSamples = 0;
+      }
+    });
 
     update();
   });

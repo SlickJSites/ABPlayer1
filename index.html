@@ -99,22 +99,6 @@ button.active {
     <button id="afterBtn">After</button>
   </div>
 
-  <div class="meter-container">
-
-    <div class="meter">
-      <h3>Before</h3>
-      <div class="value" id="lufsBefore">LUFS: --</div>
-      <div class="value" id="peakBefore">True Peak: -- dBTP</div>
-      <div class="bar"><div id="barBefore" class="fill"></div></div>
-    </div>
-
-    <div class="meter">
-      <h3>After</h3>
-      <div class="value" id="lufsAfter">LUFS: --</div>
-      <div class="value" id="peakAfter">True Peak: -- dBTP</div>
-      <div class="bar"><div id="barAfter" class="fill"></div></div>
-    </div>
-
   </div>
 
 </div>
@@ -141,6 +125,17 @@ let playing = false;
 const playBtn = document.getElementById('playBtn');
 const beforeBtn = document.getElementById('beforeBtn');
 const afterBtn = document.getElementById('afterBtn');
+
+// Enable native looping once ready
+function enableLoop(wavesurfer) {
+  wavesurfer.on('ready', () => {
+    const media = wavesurfer.getMediaElement();
+    media.loop = true;
+  });
+}
+
+enableLoop(before);
+enableLoop(after);
 
 // A/B Switch
 function switchTrack(track) {

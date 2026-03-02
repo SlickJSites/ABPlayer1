@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Before / After Player</title>
+<title>Before / After Mastering Suite</title>
 
 <script src="https://unpkg.com/wavesurfer.js@7"></script>
 
@@ -68,8 +68,21 @@ button.active {
 }
 
 .value {
-  font-size: 22px;
-  color: #F0F0F0;
+  font-size: 20px;
+  margin-bottom: 5px;
+}
+
+.bar {
+  height: 10px;
+  background: #5F5F5F;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  width: 0%;
+  background: #F0F0F0;
 }
 </style>
 </head>
@@ -87,14 +100,21 @@ button.active {
   </div>
 
   <div class="meter-container">
+
     <div class="meter">
-      <h3>Before LUFS</h3>
-      <div class="value" id="lufsBefore">-- LUFS</div>
+      <h3>Before</h3>
+      <div class="value" id="lufsBefore">LUFS: --</div>
+      <div class="value" id="peakBefore">True Peak: -- dBTP</div>
+      <div class="bar"><div id="barBefore" class="fill"></div></div>
     </div>
+
     <div class="meter">
-      <h3>After LUFS</h3>
-      <div class="value" id="lufsAfter">-- LUFS</div>
+      <h3>After</h3>
+      <div class="value" id="lufsAfter">LUFS: --</div>
+      <div class="value" id="peakAfter">True Peak: -- dBTP</div>
+      <div class="bar"><div id="barAfter" class="fill"></div></div>
     </div>
+
   </div>
 
 </div>
@@ -120,22 +140,17 @@ const after = WaveSurfer.create({
   audioContext: audioContext
 });
 
-// LOAD YOUR FILES HERE
+// LOAD FILES
 before.load('SampleBefore.wav');
 after.load('SampleAfter.wav');
 
-let active = 'before';
 let playing = false;
 
 const playBtn = document.getElementById('playBtn');
 const beforeBtn = document.getElementById('beforeBtn');
 const afterBtn = document.getElementById('afterBtn');
 
-const lufsBeforeEl = document.getElementById('lufsBefore');
-const lufsAfterEl = document.getElementById('lufsAfter');
-
 function switchTrack(track) {
-  active = track;
   if (track === 'before') {
     before.setVolume(1);
     after.setVolume(0);
@@ -169,15 +184,12 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     playBtn.click();
   }
-  if (e.key.toLowerCase() === 'b') switchTrack('before');
-  if (e.key.toLowerCase() === 'a') switchTrack('after');
 });
 
-// LUFS Approximation
-function createMeter(wavesurfer, outputElement) {
+// LUFS + True Peak Meter
+function createMeter(wavesurfer, lufsEl, peakEl, barEl) {
   const analyser = audioContext.createAnalyser();
-  analyser.fftSize = 2048;
-
+  analyser.fftSize = 4096;
   wavesurfer.backend.setFilter(analyser);
 
   const buffer = new Float32Array(analyser.fftSize);
@@ -186,16 +198,34 @@ function createMeter(wavesurfer, outputElement) {
     analyser.getFloatTimeDomainData(buffer);
 
     let sum = 0;
+    let peak = 0;
+
     for (let i = 0; i < buffer.length; i++) {
-      sum += buffer[i] * buffer[i];
+      let sample = buffer[i];
+
+      sum += sample * sample;
+
+      // Oversampled peak approximation (4x linear interpolation)
+      if (i > 0) {
+        let interp1 = (buffer[i-1] + sample) / 2;
+        peak = Math.max(peak, Math.abs(sample), Math.abs(interp1));
+      } else {
+        peak = Math.max(peak, Math.abs(sample));
+      }
     }
 
     let rms = Math.sqrt(sum / buffer.length);
     let lufs = 20 * Math.log10(rms);
-
     if (lufs < -60) lufs = -60;
 
-    outputElement.textContent = lufs.toFixed(1) + " LUFS";
+    let dbtp = 20 * Math.log10(peak);
+    if (dbtp < -60) dbtp = -60;
+
+    lufsEl.textContent = "LUFS: " + lufs.toFixed(1);
+    peakEl.textContent = "True Peak: " + dbtp.toFixed(1) + " dBTP";
+
+    let percent = Math.min((peak + 1) / 1 * 100, 100);
+    barEl.style.width = percent + "%";
 
     requestAnimationFrame(update);
   }
@@ -203,8 +233,23 @@ function createMeter(wavesurfer, outputElement) {
   update();
 }
 
-before.on('ready', () => createMeter(before, lufsBeforeEl));
-after.on('ready', () => createMeter(after, lufsAfterEl));
+before.on('ready', () => {
+  createMeter(
+    before,
+    document.getElementById('lufsBefore'),
+    document.getElementById('peakBefore'),
+    document.getElementById('barBefore')
+  );
+});
+
+after.on('ready', () => {
+  createMeter(
+    after,
+    document.getElementById('lufsAfter'),
+    document.getElementById('peakAfter'),
+    document.getElementById('barAfter')
+  );
+});
 
 switchTrack('before');
 </script>

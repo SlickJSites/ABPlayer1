@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Before / After Mastering Suite</title>
+<title>Before / After Music Player</title>
 
 <script src="https://unpkg.com/wavesurfer.js@7"></script>
 
@@ -122,27 +122,21 @@ button.active {
 <script>
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-const before = WaveSurfer.create({
-  container: '#waveBefore',
-  waveColor: '#5F5F5F',
-  progressColor: '#F0F0F0',
-  backend: 'WebAudio',
-  height: 140,
-  audioContext: audioContext
-});
+function createWave(container) {
+  return WaveSurfer.create({
+    container: container,
+    waveColor: '#5F5F5F',
+    progressColor: '#F0F0F0',
+    backend: 'WebAudio',
+    height: 140,
+  });
+}
 
-const after = WaveSurfer.create({
-  container: '#waveAfter',
-  waveColor: '#5F5F5F',
-  progressColor: '#F0F0F0',
-  backend: 'WebAudio',
-  height: 140,
-  audioContext: audioContext
-});
+const before = createWave('#waveBefore');
+const after = createWave('#waveAfter');
 
-// LOAD FILES
-before.load('SampleBefore.wav');
-after.load('SampleAfter.wav');
+before.load('before.wav');
+after.load('after.wav');
 
 let playing = false;
 
@@ -164,7 +158,9 @@ function switchTrack(track) {
   }
 }
 
-playBtn.onclick = () => {
+playBtn.onclick = async () => {
+  await audioContext.resume();
+
   if (!playing) {
     before.play();
     after.play();
@@ -186,70 +182,71 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// LUFS + True Peak Meter
 function createMeter(wavesurfer, lufsEl, peakEl, barEl) {
-  const analyser = audioContext.createAnalyser();
-  analyser.fftSize = 4096;
-  wavesurfer.backend.setFilter(analyser);
+  wavesurfer.on('ready', () => {
 
-  const buffer = new Float32Array(analyser.fftSize);
+    const media = wavesurfer.getMediaElement();
+    const source = audioContext.createMediaElementSource(media);
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 4096;
 
-  function update() {
-    analyser.getFloatTimeDomainData(buffer);
+    source.connect(analyser);
+    analyser.connect(audioContext.destination);
 
-    let sum = 0;
-    let peak = 0;
+    const buffer = new Float32Array(analyser.fftSize);
 
-    for (let i = 0; i < buffer.length; i++) {
-      let sample = buffer[i];
+    function update() {
+      analyser.getFloatTimeDomainData(buffer);
 
-      sum += sample * sample;
+      let sum = 0;
+      let peak = 0;
 
-      // Oversampled peak approximation (4x linear interpolation)
-      if (i > 0) {
-        let interp1 = (buffer[i-1] + sample) / 2;
-        peak = Math.max(peak, Math.abs(sample), Math.abs(interp1));
-      } else {
-        peak = Math.max(peak, Math.abs(sample));
+      for (let i = 0; i < buffer.length; i++) {
+        let sample = buffer[i];
+        sum += sample * sample;
+
+        // Oversampled-style interpolation
+        if (i > 0) {
+          let interp = (buffer[i - 1] + sample) / 2;
+          peak = Math.max(peak, Math.abs(sample), Math.abs(interp));
+        } else {
+          peak = Math.max(peak, Math.abs(sample));
+        }
       }
+
+      let rms = Math.sqrt(sum / buffer.length);
+      let lufs = 20 * Math.log10(rms);
+      if (!isFinite(lufs) || lufs < -60) lufs = -60;
+
+      let dbtp = 20 * Math.log10(peak);
+      if (!isFinite(dbtp) || dbtp < -60) dbtp = -60;
+
+      lufsEl.textContent = "LUFS: " + lufs.toFixed(1);
+      peakEl.textContent = "True Peak: " + dbtp.toFixed(1) + " dBTP";
+
+      let percent = Math.min((peak) * 100, 100);
+      barEl.style.width = percent + "%";
+
+      requestAnimationFrame(update);
     }
 
-    let rms = Math.sqrt(sum / buffer.length);
-    let lufs = 20 * Math.log10(rms);
-    if (lufs < -60) lufs = -60;
-
-    let dbtp = 20 * Math.log10(peak);
-    if (dbtp < -60) dbtp = -60;
-
-    lufsEl.textContent = "LUFS: " + lufs.toFixed(1);
-    peakEl.textContent = "True Peak: " + dbtp.toFixed(1) + " dBTP";
-
-    let percent = Math.min((peak + 1) / 1 * 100, 100);
-    barEl.style.width = percent + "%";
-
-    requestAnimationFrame(update);
-  }
-
-  update();
+    update();
+  });
 }
 
-before.on('ready', () => {
-  createMeter(
-    before,
-    document.getElementById('lufsBefore'),
-    document.getElementById('peakBefore'),
-    document.getElementById('barBefore')
-  );
-});
+createMeter(
+  before,
+  document.getElementById('lufsBefore'),
+  document.getElementById('peakBefore'),
+  document.getElementById('barBefore')
+);
 
-after.on('ready', () => {
-  createMeter(
-    after,
-    document.getElementById('lufsAfter'),
-    document.getElementById('peakAfter'),
-    document.getElementById('barAfter')
-  );
-});
+createMeter(
+  after,
+  document.getElementById('lufsAfter'),
+  document.getElementById('peakAfter'),
+  document.getElementById('barAfter')
+);
 
 switchTrack('before');
 </script>

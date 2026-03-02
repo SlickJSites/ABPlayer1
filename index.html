@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Before / After Player Undisputed</title>
+<title>Before / After - Bones Bugatti - Undisputed</title>
 
 <script src="https://unpkg.com/wavesurfer.js@7"></script>
 
@@ -126,16 +126,20 @@ const playBtn = document.getElementById('playBtn');
 const beforeBtn = document.getElementById('beforeBtn');
 const afterBtn = document.getElementById('afterBtn');
 
-// Enable native looping once ready
-function enableLoop(wavesurfer) {
-  wavesurfer.on('ready', () => {
-    const media = wavesurfer.getMediaElement();
-    media.loop = true;
+// Reliable manual looping
+function enableLoopSync(ws1, ws2) {
+  ws1.on('finish', () => {
+    ws1.setTime(0);
+    ws2.setTime(0);
+
+    if (playing) {
+      ws1.play();
+      ws2.play();
+    }
   });
 }
 
-enableLoop(before);
-enableLoop(after);
+enableLoopSync(before, after);
 
 // A/B Switch
 function switchTrack(track) {

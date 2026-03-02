@@ -1,112 +1,128 @@
-<script>
-function createWave(container) {
-  return WaveSurfer.create({
-    container: container,
-    waveColor: '#5F5F5F',
-    progressColor: '#F0F0F0',
-    backend: 'MediaElement',
-    height: 140,
-  });
-}
-
-const before = createWave('#waveBefore');
-const after = createWave('#waveAfter');
-
-before.load(’SampleBefore.wav');
-after.load(‘SampleAfterwav');
-
-let playing = false;
-let isSyncing = false;
-
-const playBtn = document.getElementById('playBtn');
-const beforeBtn = document.getElementById('beforeBtn');
-const afterBtn = document.getElementById('afterBtn');
-
-
-// =======================
-// LOCK SEEK SYNC (SAFE)
-// =======================
-function lockSync(source, target) {
-  source.on('seeking', () => {
-    if (isSyncing) return;
-
-    isSyncing = true;
-    const time = source.getCurrentTime();
-    target.setTime(time);
-    isSyncing = false;
-  });
-}
-
-lockSync(before, after);
-lockSync(after, before);
-
-
-// =======================
-// RELIABLE LOOPING
-// =======================
-function enableLoop(ws1, ws2) {
-  ws1.on('finish', () => {
-    if (!playing) return;
-
-    ws1.setTime(0);
-    ws2.setTime(0);
-
-    ws1.play();
-    ws2.play();
-  });
-}
-
-enableLoop(before, after);
-
-
-// =======================
-// PLAY / PAUSE
-// =======================
-playBtn.onclick = () => {
-  if (!playing) {
-    before.play();
-    after.play();
-    playing = true;
-  } else {
-    before.pause();
-    after.pause();
-    playing = false;
-  }
-};
-
-
-// =======================
-// SPACEBAR TOGGLE
-// =======================
-document.addEventListener('keydown', e => {
-  if (e.code === 'Space') {
-    e.preventDefault();
-    playBtn.click();
-  }
-});
-
-
-// =======================
-// A/B SWITCH
-// =======================
-function switchTrack(track) {
-  if (track === 'before') {
-    before.setVolume(1);
-    after.setVolume(0);
-    beforeBtn.classList.add('active');
-    afterBtn.classList.remove('active');
-  } else {
-    before.setVolume(0);
-    after.setVolume(1);
-    afterBtn.classList.add('active');
-    beforeBtn.classList.remove('active');
-  }
-}
-
-beforeBtn.onclick = () => switchTrack('before');
-afterBtn.onclick = () => switchTrack('after');
-
-
-// Default state
-switchTrack('before');
-</script>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2487.7">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;script&gt;</p>
+<p class="p1">function createWave(container) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>return WaveSurfer.create({</p>
+<p class="p1"><span class="Apple-converted-space">    </span>container: container,</p>
+<p class="p1"><span class="Apple-converted-space">    </span>waveColor: '#5F5F5F',</p>
+<p class="p1"><span class="Apple-converted-space">    </span>progressColor: '#F0F0F0',</p>
+<p class="p1"><span class="Apple-converted-space">    </span>backend: 'MediaElement',</p>
+<p class="p1"><span class="Apple-converted-space">    </span>height: 140,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>});</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">const before = createWave('#waveBefore');</p>
+<p class="p1">const after = createWave('#waveAfter');</p>
+<p class="p2"><br></p>
+<p class="p1">before.load(‘SampleBefore.wav');</p>
+<p class="p1">after.load(‘SampleAfterwav');</p>
+<p class="p2"><br></p>
+<p class="p1">let playing = false;</p>
+<p class="p1">let isSyncing = false;</p>
+<p class="p2"><br></p>
+<p class="p1">const playBtn = document.getElementById('playBtn');</p>
+<p class="p1">const beforeBtn = document.getElementById('beforeBtn');</p>
+<p class="p1">const afterBtn = document.getElementById('afterBtn');</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1">// =======================</p>
+<p class="p1">// LOCK SEEK SYNC (SAFE)</p>
+<p class="p1">// =======================</p>
+<p class="p1">function lockSync(source, target) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>source.on('seeking', () =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (isSyncing) return;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>isSyncing = true;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const time = source.getCurrentTime();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>target.setTime(time);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>isSyncing = false;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>});</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">lockSync(before, after);</p>
+<p class="p1">lockSync(after, before);</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1">// =======================</p>
+<p class="p1">// RELIABLE LOOPING</p>
+<p class="p1">// =======================</p>
+<p class="p1">function enableLoop(ws1, ws2) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>ws1.on('finish', () =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (!playing) return;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>ws1.setTime(0);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>ws2.setTime(0);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>ws1.play();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>ws2.play();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>});</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">enableLoop(before, after);</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1">// =======================</p>
+<p class="p1">// PLAY / PAUSE</p>
+<p class="p1">// =======================</p>
+<p class="p1">playBtn.onclick = () =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (!playing) {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>before.play();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>after.play();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>playing = true;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>before.pause();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>after.pause();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>playing = false;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1">};</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1">// =======================</p>
+<p class="p1">// SPACEBAR TOGGLE</p>
+<p class="p1">// =======================</p>
+<p class="p1">document.addEventListener('keydown', e =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (e.code === 'Space') {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>e.preventDefault();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>playBtn.click();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1">});</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1">// =======================</p>
+<p class="p1">// A/B SWITCH</p>
+<p class="p1">// =======================</p>
+<p class="p1">function switchTrack(track) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (track === 'before') {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>before.setVolume(1);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>after.setVolume(0);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>beforeBtn.classList.add('active');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>afterBtn.classList.remove('active');</p>
+<p class="p1"><span class="Apple-converted-space">  </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>before.setVolume(0);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>after.setVolume(1);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>afterBtn.classList.add('active');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>beforeBtn.classList.remove('active');</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">beforeBtn.onclick = () =&gt; switchTrack('before');</p>
+<p class="p1">afterBtn.onclick = () =&gt; switchTrack('after');</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1">// Default state</p>
+<p class="p1">switchTrack('before');</p>
+<p class="p1">&lt;/script&gt;</p>
+</body>
+</html>

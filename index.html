@@ -1,108 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Before / After - Bones Bugatti - Undisputed</title>
-
-<script src="https://unpkg.com/wavesurfer.js@7"></script>
-
-<style>
-body {
-  background: #0F0F0F;
-  color: #F0F0F0;
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 30px;
-}
-
-.container {
-  max-width: 1000px;
-  margin: auto;
-}
-
-.wave {
-  height: 140px;
-  background: #1F1F1F;
-  margin-bottom: 20px;
-  border-radius: 6px;
-}
-
-.controls {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-button {
-  flex: 1;
-  padding: 14px;
-  background: #5F5F5F;
-  color: #F0F0F0;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-button.active {
-  background: #7F7F7F;
-}
-
-.meter-container {
-  display: flex;
-  gap: 20px;
-  margin-top: 20px;
-}
-
-.meter {
-  flex: 1;
-  background: #1F1F1F;
-  padding: 15px;
-  border-radius: 6px;
-}
-
-.meter h3 {
-  margin: 0 0 10px 0;
-  font-weight: normal;
-}
-
-.value {
-  font-size: 20px;
-  margin-bottom: 5px;
-}
-
-.bar {
-  height: 10px;
-  background: #5F5F5F;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.fill {
-  height: 100%;
-  width: 0%;
-  background: #F0F0F0;
-}
-</style>
-</head>
-<body>
-
-<div class="container">
-
-  <div id="waveBefore" class="wave"></div>
-  <div id="waveAfter" class="wave"></div>
-
-  <div class="controls">
-    <button id="playBtn">Play / Pause</button>
-    <button id="beforeBtn" class="active">Before</button>
-    <button id="afterBtn">After</button>
-  </div>
-
-  </div>
-
-</div>
-
 <script>
 function createWave(container) {
   return WaveSurfer.create({
@@ -117,31 +12,83 @@ function createWave(container) {
 const before = createWave('#waveBefore');
 const after = createWave('#waveAfter');
 
-before.load('SampleBefore.wav');
-after.load('SampleAfter.wav');
+before.load(’SampleBefore.wav');
+after.load(‘SampleAfterwav');
 
 let playing = false;
+let isSyncing = false;
 
 const playBtn = document.getElementById('playBtn');
 const beforeBtn = document.getElementById('beforeBtn');
 const afterBtn = document.getElementById('afterBtn');
 
-// Reliable manual looping
-function enableLoopSync(ws1, ws2) {
-  ws1.on('finish', () => {
-    ws1.setTime(0);
-    ws2.setTime(0);
 
-    if (playing) {
-      ws1.play();
-      ws2.play();
-    }
+// =======================
+// LOCK SEEK SYNC (SAFE)
+// =======================
+function lockSync(source, target) {
+  source.on('seeking', () => {
+    if (isSyncing) return;
+
+    isSyncing = true;
+    const time = source.getCurrentTime();
+    target.setTime(time);
+    isSyncing = false;
   });
 }
 
-enableLoopSync(before, after);
+lockSync(before, after);
+lockSync(after, before);
 
-// A/B Switch
+
+// =======================
+// RELIABLE LOOPING
+// =======================
+function enableLoop(ws1, ws2) {
+  ws1.on('finish', () => {
+    if (!playing) return;
+
+    ws1.setTime(0);
+    ws2.setTime(0);
+
+    ws1.play();
+    ws2.play();
+  });
+}
+
+enableLoop(before, after);
+
+
+// =======================
+// PLAY / PAUSE
+// =======================
+playBtn.onclick = () => {
+  if (!playing) {
+    before.play();
+    after.play();
+    playing = true;
+  } else {
+    before.pause();
+    after.pause();
+    playing = false;
+  }
+};
+
+
+// =======================
+// SPACEBAR TOGGLE
+// =======================
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    playBtn.click();
+  }
+});
+
+
+// =======================
+// A/B SWITCH
+// =======================
 function switchTrack(track) {
   if (track === 'before') {
     before.setVolume(1);
@@ -156,44 +103,10 @@ function switchTrack(track) {
   }
 }
 
-// Lock seeking between both players
-function lockSync(source, target) {
-  source.on('seeking', () => {
-    const time = source.getCurrentTime();
-    target.setTime(time);
-  });
-}
-
-lockSync(before, after);
-lockSync(after, before);
-
-// Play / Pause
-playBtn.onclick = () => {
-  if (!playing) {
-    before.play();
-    after.play();
-    playing = true;
-  } else {
-    before.pause();
-    after.pause();
-    playing = false;
-  }
-};
-
-// Spacebar toggle
-document.addEventListener('keydown', e => {
-  if (e.key === ' ') {
-    e.preventDefault();
-    playBtn.click();
-  }
-});
-
 beforeBtn.onclick = () => switchTrack('before');
 afterBtn.onclick = () => switchTrack('after');
 
-// Default to BEFORE
+
+// Default state
 switchTrack('before');
 </script>
-
-</body>
-</html>

@@ -120,8 +120,6 @@ button.active {
 </div>
 
 <script>
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
 function createWave(container) {
   return WaveSurfer.create({
     container: container,
@@ -135,8 +133,8 @@ function createWave(container) {
 const before = createWave('#waveBefore');
 const after = createWave('#waveAfter');
 
-before.load('SampleBefore.wav');
-after.load('SampleAfter.wav');
+before.load('before.wav');
+after.load('after.wav');
 
 let playing = false;
 
@@ -144,6 +142,7 @@ const playBtn = document.getElementById('playBtn');
 const beforeBtn = document.getElementById('beforeBtn');
 const afterBtn = document.getElementById('afterBtn');
 
+// A/B Switch
 function switchTrack(track) {
   if (track === 'before') {
     before.setVolume(1);
@@ -158,7 +157,7 @@ function switchTrack(track) {
   }
 }
 
-// LOCK SEEKING (No Drift)
+// Lock seeking between both players
 function lockSync(source, target) {
   source.on('seeking', () => {
     const time = source.getCurrentTime();
@@ -170,9 +169,7 @@ lockSync(before, after);
 lockSync(after, before);
 
 // Play / Pause
-playBtn.onclick = async () => {
-  await audioContext.resume();
-
+playBtn.onclick = () => {
   if (!playing) {
     before.play();
     after.play();
@@ -184,9 +181,7 @@ playBtn.onclick = async () => {
   }
 };
 
-beforeBtn.onclick = () => switchTrack('before');
-afterBtn.onclick = () => switchTrack('after');
-
+// Spacebar toggle
 document.addEventListener('keydown', e => {
   if (e.key === ' ') {
     e.preventDefault();
@@ -194,109 +189,10 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// INTEGRATED LUFS (Gated Accumulation)
-function createIntegratedMeter(wavesurfer, lufsEl, peakEl, barEl) {
+beforeBtn.onclick = () => switchTrack('before');
+afterBtn.onclick = () => switchTrack('after');
 
-  wavesurfer.on('ready', () => {
-
-    const media = wavesurfer.getMediaElement();
-    const source = audioContext.createMediaElementSource(media);
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 4096;
-
-    source.connect(analyser);
-    analyser.connect(audioContext.destination);
-
-    const buffer = new Float32Array(analyser.fftSize);
-
-    let integratedEnergy = 0;
-    let integratedSamples = 0;
-    let maxTruePeak = -Infinity;
-
-    function update() {
-
-      analyser.getFloatTimeDomainData(buffer);
-
-      let sum = 0;
-      let peak = 0;
-
-      for (let i = 0; i < buffer.length; i++) {
-        let sample = buffer[i];
-        sum += sample * sample;
-
-        // Simple inter-sample approximation
-        if (i > 0) {
-          let interp = (buffer[i - 1] + sample) / 2;
-          peak = Math.max(peak, Math.abs(sample), Math.abs(interp));
-        } else {
-          peak = Math.max(peak, Math.abs(sample));
-        }
-      }
-
-      // ===== INTEGRATED LUFS =====
-      let rms = Math.sqrt(sum / buffer.length);
-      let momentary = 20 * Math.log10(rms);
-
-      if (momentary > -70) {
-        integratedEnergy += sum;
-        integratedSamples += buffer.length;
-      }
-
-      let integratedLufs = -60;
-
-      if (integratedSamples > 0) {
-        let meanSquare = integratedEnergy / integratedSamples;
-        integratedLufs = 20 * Math.log10(Math.sqrt(meanSquare));
-      }
-
-      if (!isFinite(integratedLufs)) integratedLufs = -60;
-
-      lufsEl.textContent = "Integrated LUFS: " + integratedLufs.toFixed(1);
-
-      // ===== OVERALL TRUE PEAK =====
-      let currentDbtp = 20 * Math.log10(peak);
-      if (!isFinite(currentDbtp)) currentDbtp = -60;
-
-      if (currentDbtp > maxTruePeak) {
-        maxTruePeak = currentDbtp;
-      }
-
-      peakEl.textContent = "Max True Peak: " + maxTruePeak.toFixed(1) + " dBTP";
-
-      // Peak bar reflects MAX peak
-      let percent = Math.min(Math.pow(10, maxTruePeak / 20) * 100, 100);
-      barEl.style.width = percent + "%";
-
-      requestAnimationFrame(update);
-    }
-
-    // Reset when restarting from beginning
-    wavesurfer.on('seek', (progress) => {
-      if (progress === 0) {
-        maxTruePeak = -Infinity;
-        integratedEnergy = 0;
-        integratedSamples = 0;
-      }
-    });
-
-    update();
-  });
-}
-
-createIntegratedMeter(
-  before,
-  document.getElementById('lufsBefore'),
-  document.getElementById('peakBefore'),
-  document.getElementById('barBefore')
-);
-
-createIntegratedMeter(
-  after,
-  document.getElementById('lufsAfter'),
-  document.getElementById('peakAfter'),
-  document.getElementById('barAfter')
-);
-
+// Default to BEFORE
 switchTrack('before');
 </script>
 

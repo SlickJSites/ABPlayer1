@@ -3,207 +3,210 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mastering A/B Waveform Player</title>
+<title>Before / After Player</title>
 
 <script src="https://unpkg.com/wavesurfer.js@7"></script>
-<script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
 
 <style>
-  body {
-    background: #0f0f0f;
-    font-family: Arial, sans-serif;
-    color: white;
-    padding: 20px;
-  }
+body {
+  background: #0F0F0F;
+  color: #F0F0F0;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 30px;
+}
 
-  .player {
-    max-width: 1000px;
-    margin: auto;
-  }
+.container {
+  max-width: 1000px;
+  margin: auto;
+}
 
-  .wave-container {
-    margin-bottom: 20px;
-  }
+.wave {
+  height: 140px;
+  background: #1F1F1F;
+  margin-bottom: 20px;
+  border-radius: 6px;
+}
 
-  .wave {
-    height: 120px;
-    background: #1a1a1a;
-    border-radius: 8px;
-  }
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
 
-  .controls {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-  }
+button {
+  flex: 1;
+  padding: 14px;
+  background: #5F5F5F;
+  color: #F0F0F0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
 
-  button {
-    flex: 1;
-    padding: 12px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 14px;
-  }
+button.active {
+  background: #7F7F7F;
+}
 
-  .active {
-    background: #00e676;
-    color: black;
-  }
+.meter-container {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
 
-  .inactive {
-    background: #333;
-    color: white;
-  }
+.meter {
+  flex: 1;
+  background: #1F1F1F;
+  padding: 15px;
+  border-radius: 6px;
+}
 
-  .slider {
-    margin-top: 15px;
-  }
+.meter h3 {
+  margin: 0 0 10px 0;
+  font-weight: normal;
+}
 
-  input[type=range] {
-    width: 100%;
-  }
-
+.value {
+  font-size: 22px;
+  color: #F0F0F0;
+}
 </style>
 </head>
-
 <body>
 
-<div class="player">
+<div class="container">
 
-  <div class="wave-container">
-    <div id="waveA" class="wave"></div>
-  </div>
-
-  <div class="wave-container">
-    <div id="waveB" class="wave"></div>
-  </div>
+  <div id="waveBefore" class="wave"></div>
+  <div id="waveAfter" class="wave"></div>
 
   <div class="controls">
     <button id="playBtn">Play / Pause</button>
-    <button id="btnA" class="active">Before</button>
-    <button id="btnB" class="inactive">After</button>
+    <button id="beforeBtn" class="active">Before</button>
+    <button id="afterBtn">After</button>
   </div>
 
-  <div class="slider">
-    Crossfade B ↔ A
-    <input type="range" id="crossfade" min="0" max="1" step="0.01" value="0">
+  <div class="meter-container">
+    <div class="meter">
+      <h3>Before LUFS</h3>
+      <div class="value" id="lufsBefore">-- LUFS</div>
+    </div>
+    <div class="meter">
+      <h3>After LUFS</h3>
+      <div class="value" id="lufsAfter">-- LUFS</div>
+    </div>
   </div>
 
 </div>
 
 <script>
-  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-  const waveA = WaveSurfer.create({
-    container: '#waveA',
-    waveColor: '#4caf50',
-    progressColor: '#00e676',
-    height: 120,
-    normalize: false,
-    backend: 'WebAudio',
-    audioContext: audioContext
-  });
+const before = WaveSurfer.create({
+  container: '#waveBefore',
+  waveColor: '#5F5F5F',
+  progressColor: '#F0F0F0',
+  backend: 'WebAudio',
+  height: 140,
+  audioContext: audioContext
+});
 
-  const waveB = WaveSurfer.create({
-    container: '#waveB',
-    waveColor: '#2196f3',
-    progressColor: '#00b0ff',
-    height: 120,
-    normalize: false,
-    backend: 'WebAudio',
-    audioContext: audioContext
-  });
+const after = WaveSurfer.create({
+  container: '#waveAfter',
+  waveColor: '#5F5F5F',
+  progressColor: '#F0F0F0',
+  backend: 'WebAudio',
+  height: 140,
+  audioContext: audioContext
+});
 
-  // LOAD YOUR FILES HERE
-  waveA.load('SampleBefore.wav');
-  waveB.load('SampleAfter.wav');
+// LOAD YOUR FILES HERE
+before.load('SampleBefore.wav');
+after.load('SampleAfter.wav');
 
-  let active = 'A';
-  let isPlaying = false;
+let active = 'before';
+let playing = false;
 
-  const btnA = document.getElementById('btnA');
-  const btnB = document.getElementById('btnB');
-  const playBtn = document.getElementById('playBtn');
-  const crossfade = document.getElementById('crossfade');
+const playBtn = document.getElementById('playBtn');
+const beforeBtn = document.getElementById('beforeBtn');
+const afterBtn = document.getElementById('afterBtn');
 
-  function syncPosition(source, target) {
-    const time = source.getCurrentTime();
-    target.setTime(time);
+const lufsBeforeEl = document.getElementById('lufsBefore');
+const lufsAfterEl = document.getElementById('lufsAfter');
+
+function switchTrack(track) {
+  active = track;
+  if (track === 'before') {
+    before.setVolume(1);
+    after.setVolume(0);
+    beforeBtn.classList.add('active');
+    afterBtn.classList.remove('active');
+  } else {
+    before.setVolume(0);
+    after.setVolume(1);
+    afterBtn.classList.add('active');
+    beforeBtn.classList.remove('active');
   }
+}
 
-  function playBoth() {
-    waveA.play();
-    waveB.play();
-    isPlaying = true;
+playBtn.onclick = () => {
+  if (!playing) {
+    before.play();
+    after.play();
+    playing = true;
+  } else {
+    before.pause();
+    after.pause();
+    playing = false;
   }
+};
 
-  function pauseBoth() {
-    waveA.pause();
-    waveB.pause();
-    isPlaying = false;
+beforeBtn.onclick = () => switchTrack('before');
+afterBtn.onclick = () => switchTrack('after');
+
+document.addEventListener('keydown', e => {
+  if (e.key === ' ') {
+    e.preventDefault();
+    playBtn.click();
   }
+  if (e.key.toLowerCase() === 'b') switchTrack('before');
+  if (e.key.toLowerCase() === 'a') switchTrack('after');
+});
 
-  function switchTo(version) {
-    active = version;
+// LUFS Approximation
+function createMeter(wavesurfer, outputElement) {
+  const analyser = audioContext.createAnalyser();
+  analyser.fftSize = 2048;
 
-    if (version === 'A') {
-      btnA.classList.add('active');
-      btnB.classList.remove('active');
-      btnA.classList.remove('inactive');
-      btnB.classList.add('inactive');
-      crossfade.value = 0;
-      waveA.setVolume(1);
-      waveB.setVolume(0);
-    } else {
-      btnB.classList.add('active');
-      btnA.classList.remove('active');
-      btnB.classList.remove('inactive');
-      btnA.classList.add('inactive');
-      crossfade.value = 1;
-      waveA.setVolume(0);
-      waveB.setVolume(1);
+  wavesurfer.backend.setFilter(analyser);
+
+  const buffer = new Float32Array(analyser.fftSize);
+
+  function update() {
+    analyser.getFloatTimeDomainData(buffer);
+
+    let sum = 0;
+    for (let i = 0; i < buffer.length; i++) {
+      sum += buffer[i] * buffer[i];
     }
+
+    let rms = Math.sqrt(sum / buffer.length);
+    let lufs = 20 * Math.log10(rms);
+
+    if (lufs < -60) lufs = -60;
+
+    outputElement.textContent = lufs.toFixed(1) + " LUFS";
+
+    requestAnimationFrame(update);
   }
 
-  playBtn.onclick = () => {
-    if (!isPlaying) {
-      playBoth();
-    } else {
-      pauseBoth();
-    }
-  };
+  update();
+}
 
-  btnA.onclick = () => switchTo('A');
-  btnB.onclick = () => switchTo('B');
+before.on('ready', () => createMeter(before, lufsBeforeEl));
+after.on('ready', () => createMeter(after, lufsAfterEl));
 
-  // Keyboard switching (pro workflow)
-  document.addEventListener('keydown', e => {
-    if (e.key.toLowerCase() === 'a') switchTo('A');
-    if (e.key.toLowerCase() === 'b') switchTo('B');
-    if (e.key === ' ') {
-      e.preventDefault();
-      if (!isPlaying) playBoth();
-      else pauseBoth();
-    }
-  });
-
-  // Keep both tracks sample-aligned
-  waveA.on('seeking', () => syncPosition(waveA, waveB));
-  waveB.on('seeking', () => syncPosition(waveB, waveA));
-
-  // Crossfade blend
-  crossfade.addEventListener('input', () => {
-    const value = parseFloat(crossfade.value);
-    waveA.setVolume(1 - value);
-    waveB.setVolume(value);
-  });
-
-  // Initialize volumes
-  waveA.setVolume(1);
-  waveB.setVolume(0);
-
+switchTrack('before');
 </script>
 
 </body>

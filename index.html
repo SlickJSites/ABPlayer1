@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sample 1</title>
+<title>Mastering Preview</title>
 
 <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
 
@@ -40,12 +40,12 @@ button {
 }
 
 button:hover {
-  background: #5F5F5F;
+  background: #222;
 }
 
 button.active {
   background: #F0F0F0;
-  color: #7F7F7F;
+  color: #111111;
   border-color: #F0F0F0;
 }
 
@@ -59,7 +59,7 @@ button.active {
 
 <body>
 
-<h1>SAMPLE 1</h1>
+<h1>Mastering Preview</h1>
 
 <div class="wave-container">
   <div id="waveBefore"></div>
@@ -75,94 +75,74 @@ button.active {
   <button id="afterBtn">After</button>
 </div>
 
+<!-- ONE MASTER AUDIO ELEMENT -->
+<audio id="masterAudio" loop></audio>
+
 <script>
-function createWave(container) {
-  return WaveSurfer.create({
+const masterAudio = document.getElementById('masterAudio');
+
+function createWave(container, file) {
+  const ws = WaveSurfer.create({
     container: container,
     waveColor: '#5F5F5F',
     progressColor: '#F0F0F0',
     backend: 'MediaElement',
+    media: masterAudio,   // share ONE audio element
     height: 110,
   });
+
+  ws.load(file);
+  return ws;
 }
 
-const before = createWave('#waveBefore');
-const after = createWave('#waveAfter');
-
-before.load('SampleBefore.wav');
-after.load('SampleAfter.wav');
+// Both waveforms share same audio engine
+const before = createWave('#waveBefore', 'SampleBefore.wav');
+const after = createWave('#waveAfter', 'SampleAfter.wav');
 
 let playing = false;
-let isSyncing = false;
+let currentTrack = 'before';
 
 const playBtn = document.getElementById('playBtn');
 const beforeBtn = document.getElementById('beforeBtn');
 const afterBtn = document.getElementById('afterBtn');
 
+// Switch source cleanly
+function switchTrack(track) {
+  if (track === currentTrack) return;
 
-// =======================
-// SAFE SEEK SYNC
-// =======================
-function lockSync(source, target) {
-  source.on('seeking', () => {
-    if (isSyncing) return;
+  const currentTime = masterAudio.currentTime;
+  const wasPlaying = !masterAudio.paused;
 
-    isSyncing = true;
-    const time = source.getCurrentTime();
-    target.setTime(time);
-    isSyncing = false;
-  });
+  masterAudio.pause();
+
+  masterAudio.src = track === 'before' ? 'before.wav' : 'after.wav';
+  masterAudio.currentTime = currentTime;
+
+  if (wasPlaying) {
+    masterAudio.play();
+  }
+
+  currentTrack = track;
+
+  beforeBtn.classList.toggle('active', track === 'before');
+  afterBtn.classList.toggle('active', track === 'after');
 }
 
-lockSync(before, after);
-lockSync(after, before);
+beforeBtn.onclick = () => switchTrack('before');
+afterBtn.onclick = () => switchTrack('after');
 
-
-// =======================
-// TRUE LOCKED LOOPING
-// =======================
-// Use BEFORE as master clock
-before.on('ready', () => {
-  const master = before.getMediaElement();
-
-  master.addEventListener('ended', () => {
-
-    if (!playing) return;
-
-    // Pause both
-    before.pause();
-    after.pause();
-
-    // Reset both instantly
-    before.setTime(0);
-    after.setTime(0);
-
-    // Restart both together
-    before.play();
-    after.play();
-  });
-});
-
-
-// =======================
-// PLAY / PAUSE
-// =======================
+// Play / Pause
 playBtn.onclick = () => {
   if (!playing) {
-    before.play();
-    after.play();
+    masterAudio.play();
     playing = true;
   } else {
-    before.pause();
-    after.pause();
+    masterAudio.pause();
     playing = false;
   }
 };
 
-
-// =======================
-// SPACEBAR CONTROL
-// =======================
+// Spacebar
 document.addEventListener('keydown', e => {
   if (e.code === 'Space') {
     e.preventDefault();
@@ -170,28 +150,8 @@ document.addEventListener('keydown', e => {
   }
 });
 
-
-// =======================
-// A/B SWITCH
-// =======================
-function switchTrack(track) {
-  if (track === 'before') {
-    before.setVolume(1);
-    after.setVolume(0);
-    beforeBtn.classList.add('active');
-    afterBtn.classList.remove('active');
-  } else {
-    before.setVolume(0);
-    after.setVolume(1);
-    beforeBtn.classList.add('active');
-    afterBtn.classList.remove('active');
-  }
-}
-
-beforeBtn.onclick = () => switchTrack('before');
-afterBtn.onclick = () => switchTrack('after');
-
-switchTrack('before');
+// Default source
+masterAudio.src = 'before.wav';
 </script>
 
 </body>

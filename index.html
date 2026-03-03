@@ -3,71 +3,76 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Before / After Mastering Player</title>
+<title>Sample 1</title>
 
-<script src="https://unpkg.com/wavesurfer.js@7"></script>
+<script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
 
 <style>
 body {
   background: #0F0F0F;
   color: #F0F0F0;
-  font-family: Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  text-align: center;
+  padding: 60px 20px;
   margin: 0;
-  padding: 30px;
 }
 
-.container {
-  max-width: 1000px;
-  margin: auto;
+h1 {
+  font-weight: 500;
+  letter-spacing: 1px;
+  margin-bottom: 50px;
 }
 
-.wave {
-  height: 140px;
-  background: #1F1F1F;
-  margin-bottom: 20px;
-  border-radius: 6px;
-}
-
-.controls {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+.wave-container {
+  margin-bottom: 50px;
 }
 
 button {
-  flex: 1;
-  padding: 14px;
-  background: #5F5F5F;
+  background: #7F7F7F;
   color: #F0F0F0;
-  border: none;
-  border-radius: 4px;
+  border: 1px solid #333;
+  padding: 12px 28px;
+  margin: 10px;
+  font-size: 15px;
+  letter-spacing: 0.5px;
   cursor: pointer;
-  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  background: #222;
 }
 
 button.active {
-  background: #7F7F7F;
+  background: #F0F0F0;
+  color: #2F2F2F;
+  border-color: #F0F0F0;
 }
 
-.value {
-  font-size: 22px;
-  color: #F0F0F0;
+#waveBefore,
+#waveAfter {
+  max-width: 900px;
+  margin: 0 auto;
 }
 </style>
 </head>
+
 <body>
 
-<div class="container">
+<h1>SAMPLE 1</h1>
 
-  <div id="waveBefore" class="wave"></div>
-  <div id="waveAfter" class="wave"></div>
+<div class="wave-container">
+  <div id="waveBefore"></div>
+</div>
 
-  <div class="controls">
-    <button id="playBtn">Play / Pause</button>
-    <button id="beforeBtn" class="active">Before</button>
-    <button id="afterBtn">After</button>
-  </div>
+<div class="wave-container">
+  <div id="waveAfter"></div>
+</div>
 
+<div>
+  <button id="playBtn">Play / Pause</button>
+  <button id="beforeBtn" class="active">Before</button>
+  <button id="afterBtn">After</button>
 </div>
 
 <script>
@@ -77,15 +82,15 @@ function createWave(container) {
     waveColor: '#5F5F5F',
     progressColor: '#F0F0F0',
     backend: 'MediaElement',
-    height: 140,
+    height: 110,
   });
 }
 
 const before = createWave('#waveBefore');
 const after = createWave('#waveAfter');
 
-before.load(’SampleBefore.wav');
-after.load(‘SampleAfter.wav');
+before.load('SampleBefore.wav');
+after.load('SampleAfter.wav');
 
 let playing = false;
 let isSyncing = false;
@@ -96,7 +101,7 @@ const afterBtn = document.getElementById('afterBtn');
 
 
 // =======================
-// LOCK SEEK SYNC (SAFE)
+// SAFE SEEK SYNC
 // =======================
 function lockSync(source, target) {
   source.on('seeking', () => {
@@ -114,21 +119,17 @@ lockSync(after, before);
 
 
 // =======================
-// RELIABLE LOOPING
+// RELIABLE LOOP
 // =======================
-function enableLoop(ws1, ws2) {
-  ws1.on('finish', () => {
-    if (!playing) return;
+before.on('finish', () => {
+  if (!playing) return;
 
-    ws1.setTime(0);
-    ws2.setTime(0);
+  before.setTime(0);
+  after.setTime(0);
 
-    ws1.play();
-    ws2.play();
-  });
-}
-
-enableLoop(before, after);
+  before.play();
+  after.play();
+});
 
 
 // =======================
@@ -148,7 +149,7 @@ playBtn.onclick = () => {
 
 
 // =======================
-// SPACEBAR TOGGLE
+// SPACEBAR CONTROL
 // =======================
 document.addEventListener('keydown', e => {
   if (e.code === 'Space') {
@@ -170,16 +171,14 @@ function switchTrack(track) {
   } else {
     before.setVolume(0);
     after.setVolume(1);
-    afterBtn.classList.add('active');
-    beforeBtn.classList.remove('active');
+    beforeBtn.classList.add('active');
+    afterBtn.classList.remove('active');
   }
 }
 
 beforeBtn.onclick = () => switchTrack('before');
 afterBtn.onclick = () => switchTrack('after');
 
-
-// Default state
 switchTrack('before');
 </script>
 

@@ -9,7 +9,7 @@
 
 <style>
 body {
-  background: #0F0F0F;
+  background: #111111;
   color: #F0F0F0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   text-align: center;
@@ -28,7 +28,7 @@ h1 {
 }
 
 button {
-  background: #1F1F1F;
+  background: #1A1A1A;
   color: #F0F0F0;
   border: 1px solid #333;
   padding: 12px 28px;
@@ -40,12 +40,12 @@ button {
 }
 
 button:hover {
-  background: #7F7F7F;
+  background: #5F5F5F;
 }
 
 button.active {
   background: #F0F0F0;
-  color: #111111;
+  color: #7F7F7F;
   border-color: #F0F0F0;
 }
 
@@ -101,20 +101,6 @@ const afterBtn = document.getElementById('afterBtn');
 
 
 // =======================
-// ENABLE NATIVE LOOPING
-// =======================
-function enableNativeLoop(ws) {
-  ws.on('ready', () => {
-    const media = ws.getMediaElement();
-    media.loop = true;
-  });
-}
-
-enableNativeLoop(before);
-enableNativeLoop(after);
-
-
-// =======================
 // SAFE SEEK SYNC
 // =======================
 function lockSync(source, target) {
@@ -130,6 +116,32 @@ function lockSync(source, target) {
 
 lockSync(before, after);
 lockSync(after, before);
+
+
+// =======================
+// TRUE LOCKED LOOPING
+// =======================
+// Use BEFORE as master clock
+before.on('ready', () => {
+  const master = before.getMediaElement();
+
+  master.addEventListener('ended', () => {
+
+    if (!playing) return;
+
+    // Pause both
+    before.pause();
+    after.pause();
+
+    // Reset both instantly
+    before.setTime(0);
+    after.setTime(0);
+
+    // Restart both together
+    before.play();
+    after.play();
+  });
+});
 
 
 // =======================

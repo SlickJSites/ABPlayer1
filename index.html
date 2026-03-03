@@ -28,7 +28,7 @@ h1 {
 }
 
 button {
-  background: #7F7F7F;
+  background: #1F1F1F;
   color: #F0F0F0;
   border: 1px solid #333;
   padding: 12px 28px;
@@ -40,12 +40,12 @@ button {
 }
 
 button:hover {
-  background: #222;
+  background: #7F7F7F;
 }
 
 button.active {
   background: #F0F0F0;
-  color: #2F2F2F;
+  color: #111111;
   border-color: #F0F0F0;
 }
 
@@ -101,6 +101,20 @@ const afterBtn = document.getElementById('afterBtn');
 
 
 // =======================
+// ENABLE NATIVE LOOPING
+// =======================
+function enableNativeLoop(ws) {
+  ws.on('ready', () => {
+    const media = ws.getMediaElement();
+    media.loop = true;
+  });
+}
+
+enableNativeLoop(before);
+enableNativeLoop(after);
+
+
+// =======================
 // SAFE SEEK SYNC
 // =======================
 function lockSync(source, target) {
@@ -116,20 +130,6 @@ function lockSync(source, target) {
 
 lockSync(before, after);
 lockSync(after, before);
-
-
-// =======================
-// RELIABLE LOOP
-// =======================
-before.on('finish', () => {
-  if (!playing) return;
-
-  before.setTime(0);
-  after.setTime(0);
-
-  before.play();
-  after.play();
-});
 
 
 // =======================

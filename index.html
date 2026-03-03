@@ -10,9 +10,9 @@
 
 <style>
   body {
-    background: #0f0f0f;
+    background: none;
     font-family: Arial, sans-serif;
-    color: white;
+    color: none;
     padding: 20px;
   }
 
@@ -27,7 +27,7 @@
 
   .wave {
     height: 120px;
-    background: #1f1f1f;
+    background: #1a1a1a;
     border-radius: 8px;
   }
 
@@ -48,12 +48,12 @@
   }
 
   .active {
-    background: #7f7f7f;
+    background: #9f9f9f;
     color: black;
   }
 
   .inactive {
-    background: #333;
+    background: #2f2f2f;
     color: white;
   }
 
@@ -82,12 +82,12 @@
 
   <div class="controls">
     <button id="playBtn">Play / Pause</button>
-    <button id="btnA" class="active">Listen A</button>
-    <button id="btnB" class="inactive">Listen B</button>
+    <button id="btnA" class="active">Before</button>
+    <button id="btnB" class="inactive">After</button>
   </div>
 
   <div class="slider">
-    Crossfade A ↔ B
+    Crossfade: Before ↔ After
     <input type="range" id="crossfade" min="0" max="1" step="0.01" value="0">
   </div>
 
